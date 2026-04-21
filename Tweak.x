@@ -403,12 +403,16 @@
 - (void)setRenderer:(YTIPivotBarRenderer *)renderer {
     NSMutableArray <YTIPivotBarSupportedRenderers *> *items = [renderer itemsArray];
 
+    /*
     NSDictionary *identifiersToRemove = @{
         // @"FEshorts",
         // @"FEsubscriptions",
         @"FEuploads"
         // @"FElibrary"
     };
+    */
+    
+    NSArray *identifiersToRemove = @[@"FEshorts", @"FEsubscriptions", @"FEuploads"];
 
     for (NSString *identifier in identifiersToRemove) {
         NSArray *removeValues = identifiersToRemove[identifier];
