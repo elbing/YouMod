@@ -465,3 +465,189 @@ BOOL isTabSelected = NO;
 }
 %end
 */
+
+/*
+// Thanks to aricloverEXTRA for all of these logics!
+// YTHidePlayerButtons 1.0.0 - made by @aricloverEXTRA
+static NSDictionary<NSString *, NSString *> *HideToggleMap(void) {
+    static NSDictionary<NSString *, NSString *> *map = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        map = @{
+            // identifiers
+            @"id.video.share.button": @"hideShareButton_enabled", // Share button
+            @"id.ui.add_to.offline.button": @"hideDownloadButton_enabled",
+            @"id.video.remix.button": @"hideRemixButton_enabled",
+            @"clip_button.eml": @"hideClipButton_enabled",
+            @"id.ui.carousel_header": @"hideCommentSection_enabled",
+            @"id.video.like.button": @"hideLikeButton_enabled", // like button
+            @"id.video.dislike.button": @"hideDislikeButton_enabled", // unidentified identifier
+            @"Share": @"hideShareButton_enabled", // Share Button
+            @"Ask": @"hideAskButton_enabled", // unidentified identifier
+            @"Download": @"hideDownloadButton_enabled", // Download Button
+            @"Hype": @"hideHypeButton_enabled", // unidentified identifier
+            @"Thanks": @"hideThanksButton_enabled", // unidentified identifier
+            @"Remix": @"hideRemixButton_enabled", // Remix Button
+            @"Clip": @"hideClipButton_enabled", // Clip Button
+            @"id.video.add_to.button": @"hideSaveToPlaylistButton_enabled", // unidentified identifier
+            @"Report": @"hideReportButton_enabled", // unidentified identifier
+            @"connect account": @"hideConnectButton_enabled" // unidentified identifier
+            Extra keys
+            id.reel_multi_format_link = Shorts -> full video
+            id.reel_like_button
+            id.reel_dislike_button
+            id.reel_comment_button
+            id.reel_share_button
+            id.reel_remix_button
+            id.reel_pivot_button Sound metadate in shorts
+            id.ui.video_metadata_carousel -> Preview comments in full video
+        };
+    });
+    return map;
+}
+static BOOL shouldHideForKey(NSString *key) {
+    if (!key) return NO;
+    NSString *pref = HideToggleMap()[key];
+    if (!pref) return NO;
+    return IS_ENABLED(pref);
+}
+static void safeHideView(id view) {
+    if (!view) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @try {
+            if ([view respondsToSelector:@selector(setHidden:)]) {
+                [view setHidden:YES];
+                return;
+            }
+            if ([view isKindOfClass:[UIView class]]) {
+                ((UIView *)view).hidden = YES;
+                return;
+            }
+        } @catch (NSException *ex) {
+            NSLog(@"[HidePlayerButtons] safeHideView exception: %@", ex);
+        }
+    });
+}
+static BOOL inspectAndHideIfMatch(id view) {
+    if (!view) return NO;
+    @try {
+        NSString *accId = nil;
+        if ([view respondsToSelector:@selector(accessibilityIdentifier)]) {
+            @try { accId = [view accessibilityIdentifier]; } @catch (NSException *e) { accId = nil; }
+            if (accId && shouldHideForKey(accId)) {
+                safeHideView(view);
+                return YES;
+            }
+        }
+        NSString *accLabel = nil;
+        if ([view respondsToSelector:@selector(accessibilityLabel)]) {
+            @try { accLabel = [view accessibilityLabel]; } @catch (NSException *e) { accLabel = nil; }
+            if (accLabel && shouldHideForKey(accLabel)) {
+                safeHideView(view);
+                return YES;
+            }
+        }
+        NSString *desc = nil;
+        @try { desc = [[view description] copy]; } @catch (NSException *e) { desc = nil; }
+        if (desc) {
+            for (NSString *key in HideToggleMap().allKeys) {
+                if ([desc containsString:key] && shouldHideForKey(key)) {
+                    safeHideView(view);
+                    return YES;
+                }
+            }
+        }
+    } @catch (NSException *ex) {
+        NSLog(@"[HidePlayerButtons] inspectAndHideIfMatch exception: %@", ex);
+    }
+    return NO;
+}
+static void traverseAndHideViews(UIView *root) {
+    if (!root) return;
+    @try {
+        inspectAndHideIfMatch(root);
+        NSArray<UIView *> *subs = nil;
+        @try { subs = root.subviews; } @catch (NSException *e) { subs = nil; }
+        if (subs && subs.count) {
+            for (UIView *sv in subs) {
+                if ([sv isKindOfClass:[UIView class]]) {
+                    traverseAndHideViews(sv);
+                }
+            }
+        }
+    } @catch (NSException *ex) {
+        NSLog(@"[HidePlayerButtons] traverseAndHideViews exception: %@", ex);
+    }
+}
+static void hideButtonsInActionBarIfNeeded(id collectionView) {
+    if (!collectionView) return;
+    @try {
+        // Ensure the collectionView has accessibilityIdentifier and we only operate on the action bar
+        NSString *accId = nil;
+        if ([collectionView respondsToSelector:@selector(accessibilityIdentifier)]) {
+            @try { accId = [collectionView accessibilityIdentifier]; } @catch (NSException *e) { accId = nil; }
+        }
+        if (!accId) return;
+        if (![accId isEqualToString:@"id.video.scrollable_action_bar"]) return;
+        NSArray *cells = nil;
+        if ([collectionView respondsToSelector:@selector(visibleCells)]) {
+            @try { cells = [collectionView visibleCells]; } @catch (NSException *e) { cells = nil; }
+        }
+        if (!cells || cells.count == 0) {
+            @try { cells = [collectionView subviews]; } @catch (NSException *e) { cells = nil; }
+        }
+        if (!cells || cells.count == 0) return;
+        for (id cell in cells) {
+            if ([cell isKindOfClass:[UIView class]]) {
+                traverseAndHideViews((UIView *)cell);
+            } else {
+                @try {
+                    if ([cell respondsToSelector:@selector(view)]) {
+                        id view = [cell performSelector:@selector(view)];
+                        if ([view isKindOfClass:[UIView class]]) {
+                            traverseAndHideViews((UIView *)view);
+                        }
+                    } else if ([cell respondsToSelector:@selector(node)]) {
+                        NSString *desc = nil;
+                        @try { desc = [cell description]; } @catch (NSException *e) { desc = nil; }
+                        if (desc) {
+                            // Not ideal to act on description, but we keep this non-destructive: only log for debugging
+                            // Uncomment logging for debug builds if needed.
+                            // NSLog(@"[HidePlayerButtons] Non-UIView cell description: %@", desc);
+                        }
+                    }
+                } @catch (NSException *ex) {
+                    NSLog(@"[HidePlayerButtons] Exception handling non-UIView cell: %@", ex);
+                }
+            }
+        }
+    } @catch (NSException *exception) {
+        NSLog(@"[HidePlayerButtons] hideButtonsInActionBarIfNeeded exception: %@", exception);
+    }
+}
+%hook ASCollectionView
+- (id)nodeForItemAtIndexPath:(NSIndexPath *)indexPath {
+    id node = %orig;
+    id weakSelf = (id)self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @try {
+            hideButtonsInActionBarIfNeeded(weakSelf);
+        } @catch (NSException *e) {
+            NSLog(@"[HidePlayerButtons] async hide exception: %@", e);
+        }
+    });
+    return node;
+}
+- (void)nodesDidRelayout:(NSArray *)nodes {
+    %orig;
+    id weakSelf = (id)self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @try {
+            hideButtonsInActionBarIfNeeded(weakSelf);
+        } @catch (NSException *e) {
+            NSLog(@"[HidePlayerButtons] relayout hide exception: %@", e);
+        }
+    });
+}
+%end
+*/
