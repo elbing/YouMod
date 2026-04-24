@@ -20,7 +20,7 @@
 "HIDE_CAST_BUTTON_NAVBAR_DESC" = "Hide cast button from the navigation bar.";
 
 "FEED" = "Feed";
-"REMOVE_ADS" = "Remove video ads";
+"REMOVE_ADS" = "Remove ads";
 "REMOVE_ADS_DESC" = "Remove video advertisements and YouTube Premium promotions from videos and feed.";
 "HIDE_SUBBAR" = "Hide subbar";
 "HIDE_SUBBAR_DESC" = "Hide subbar at the top of the feed.";
