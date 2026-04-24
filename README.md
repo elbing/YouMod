@@ -3,7 +3,7 @@ A tweak that's try to recreate features like in YTLite as much as possible. Cont
 
 If you want to contribute this project, scroll down below for how to do it.
 ## Why I created this project?
-The reason I created this project is because of YTLite no longer free. So I'll try my best to recreate all the features as much as I can, plus alternative tweaks combined.
+The reason is because of YTLite no longer free. So I'll try my best to recreate all the features as much as I can, plus alternative tweaks combined.
 ## Features
 This tweak can hide, remove elements and others in YouTube. Such as:
 - Navigation bar
