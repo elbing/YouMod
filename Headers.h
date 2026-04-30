@@ -27,6 +27,8 @@
 #import <YouTubeHeader/YTVarispeedSwitchController.h>
 #import <YouTubeHeader/YTVarispeedSwitchControllerImpl.h>
 #import <YouTubeHeader/YTVarispeedSwitchControllerOption.h>
+#import <YouTubeHeader/YTMultiSizeViewController.h>
+#import <YouTubeHeader/YTInlinePlayerBarContainerView.h>
 #import <dlfcn.h>
 
 // For Settings.x
@@ -56,6 +58,7 @@
 // Feed
 #define HideSubbar @"YouModHideSubbar"
 #define HideGenMusicShelf @"YouModHideGenMusicShelf"
+#define HideFeedPost @"YouModHideFeedPost"
 #define HideShortsShelf @"YouModHideShortsShelf"
 #define HideSearchHis @"YouModHideSearchHistoryAndSuggestions"
 #define HideSubButton @"YouModHideSubscribeButton"
@@ -69,7 +72,10 @@
 #define HideNextButton @"YouModHideNextButton"
 #define RemoveDarkOverlay @"YouModRemoveDarkOverlay"
 #define HideEndScreenCards @"YouModHideEndScreenCards"
+#define HideSuggestedVideo @"YouModHideSuggestedVideoOnFinish"
+#define HidePaidPromoOverlay @"YouModHidePaidPromoOverlay"
 #define HideWaterMark @"YouModHideWaterMark"
+#define GestureControls @"YouModEnableGesturesControls"
 #define DisablesDoubleTap @"YouModDisablesDoubleTap"
 #define DisablesLongHold @"YouModDisablesLongHold"
 #define AutoExitFullScreen @"YouModAutoExitFullScreen"
@@ -79,7 +85,6 @@
 #define HideFullvidTitle @"YouModHideFullscreenVideoTitle"
 #define StopAutoplayVideo @"YouModStopAutoplayVideo"
 #define HideContentWarning @"YouModHideContentWarning"
-// #define HideRelateVideo @"YouModHideRelateVideoOnFinish"
 #define AutoFullScreen @"YouModAutoFullScreen"
 #define PortFull @"YouModPortraitFullscreen"
 #define OldQualityPicker @"YouModUseOldQualityPicker"
@@ -103,6 +108,8 @@
 #define HideShortsCommit @"YouModHideShortsCommit"
 #define HideShortsSubscriptButton @"YouModHideShortsSubscriptButton"
 #define HideShortsLiveButton @"YouModHideShortsLiveButton"
+#define HideShortsLensButton @"YouModHideShortsLensButton"
+#define HideShortsTrendsButton @"YouModHideShortsTrendsButton"
 #define HideShortsToVideo @"YouModHideShortsToVideo"
 #define EnablesShortsQuality @"YouModEnablesShortsQuality"
 #define ShowShortsSeekbar @"YouModShowShortsSeekbar"
@@ -128,6 +135,13 @@
 
 #define YT_BUNDLE_ID @"com.google.ios.youtube"
 #define YT_NAME @"YouTube"
+
+// Gesture Section Enum
+typedef NS_ENUM(NSUInteger, GestureSection) {
+    GestureSectionTop,
+    GestureSectionBottom,
+    GestureSectionInvalid
+};
 
 @interface YTITopbarLogoRenderer : NSObject
 @property(readonly, nonatomic) YTIIcon *iconImage;
@@ -199,4 +213,40 @@
 - (void)exportYouModSettingsFromVC:(UIViewController *)vc;
 - (void)importYouModSettingsFromVC:(UIViewController *)vc;
 - (void)restoreYouModDefaults;
+@end
+
+// Player Gestures - @bhackel (YTLitePlus)
+@interface YTFineScrubberFilmstripView : UIView
+@end
+
+@interface YTFineScrubberFilmstripCollectionView : UICollectionView
+@end
+
+@interface YTPlayerViewController (YTLitePlus) <UIGestureRecognizerDelegate>
+@property (nonatomic, retain) UIPanGestureRecognizer *YTLitePlusPanGesture;
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer;
+@end
+
+@interface YTWatchFullscreenViewController : YTMultiSizeViewController
+@end
+
+@interface MPVolumeController : NSObject
+@property (nonatomic, assign, readwrite) float volumeValue;
+@end
+
+@interface YTPlayerBarController (YTLitePlus)
+- (void)didScrub:(UIPanGestureRecognizer *)gestureRecognizer;
+- (void)startScrubbing;
+- (void)didScrubToPoint:(CGPoint)point;
+- (void)endScrubbingForSeekSource:(int)seekSource;
+@end
+
+@interface YTMainAppVideoPlayerOverlayViewController (YTLitePlus)
+@property (nonatomic, strong, readwrite) YTPlayerBarController *playerBarController;
+@end
+
+@interface YTInlinePlayerBarContainerView (YTLitePlus)
+@property UIPanGestureRecognizer *scrubGestureRecognizer;
+@property (nonatomic, strong, readwrite) YTFineScrubberFilmstripView *fineScrubberFilmstrip;
+- (CGFloat)scrubXForScrubRange:(CGFloat)scrubRange;
 @end

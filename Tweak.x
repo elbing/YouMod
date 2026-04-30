@@ -167,7 +167,9 @@ static BOOL isDarkMode(UIView *view) {
 
 - (void)didMoveToWindow {
     %orig;
+    if (IS_ENABLED(HideShortsShelf) && [self.accessibilityIdentifier isEqualToString:@"eml.shorts-shelf"]) self.hidden = YES;
     if (IS_ENABLED(HideGenMusicShelf) && [self.accessibilityIdentifier isEqualToString:@"feed_nudge.view"]) self.hidden = YES;
+    if (IS_ENABLED(HideFeedPost) && [self.accessibilityIdentifier isEqualToString:@"id.ui.backstage.original_post"]) self.hidden = YES;
     if (IS_ENABLED(HideLikeButton) && [self.accessibilityIdentifier isEqualToString:@"id.video.like.button"]) self.hidden = YES;
     if (IS_ENABLED(HideDisLikeButton) && [self.accessibilityIdentifier isEqualToString:@"id.video.dislike.button"]) self.hidden = YES;
     if (IS_ENABLED(HideShareButton) && [self.accessibilityIdentifier isEqualToString:@"id.video.share.button"]) self.hidden = YES;
@@ -187,11 +189,14 @@ static BOOL isDarkMode(UIView *view) {
     if (IS_ENABLED(HideShortsCommit) && [self.accessibilityIdentifier isEqualToString:@"eml.shorts-disclosures"]) self.hidden = YES;
     if (IS_ENABLED(HideShortsSubscriptButton) && [self.accessibilityIdentifier isEqualToString:@"id.ui.shorts_paused_state.subscriptions_button"]) self.hidden = YES;
     if (IS_ENABLED(HideShortsLiveButton) && [self.accessibilityIdentifier isEqualToString:@"id.ui.shorts_paused_state.live_button"]) self.hidden = YES;
+    if (IS_ENABLED(HideShortsLensButton) && [self.accessibilityIdentifier isEqualToString:@"id.ui.shorts_paused_state.lens_button"]) self.hidden = YES;
+    if (IS_ENABLED(HideShortsTrendsButton) && [self.accessibilityIdentifier isEqualToString:@"id.ui.shorts_paused_state.trends_button"]) self.hidden = YES;
     if (IS_ENABLED(HideShortsToVideo) && [self.accessibilityIdentifier isEqualToString:@"id.reel_multi_format_link"]) self.hidden = YES;
     if (IS_ENABLED(HideSubButton) && [self.accessibilityIdentifier isEqualToString:@"eml.animated_subscribe_button"]) self.hidden = YES;
     if (IS_ENABLED(HideShoppingButton) && [self.accessibilityIdentifier isEqualToString:@"eml.header_store_button"]) self.hidden = YES;
     if (IS_ENABLED(HideMemberButton) && [self.accessibilityIdentifier isEqualToString:@"id.sponsor_button"]) self.hidden = YES;
-    if (([self.accessibilityIdentifier isEqualToString:@"eml.expandable_metadata.vpp"])) [self removeFromSuperview];
+    if ([self.accessibilityIdentifier isEqualToString:@"eml.expandable_metadata.vpp"]) [self removeFromSuperview];
+    if ([self.accessibilityIdentifier isEqualToString:@"eml.ad_layout.full_width_square_image_layout"]) self.hidden = YES;
 }
 
 %end
@@ -556,12 +561,14 @@ static BOOL isDarkMode(UIView *view) {
 %hook YTIElementRenderer
 - (NSData *)elementData {
     NSString *description = [self description];
-    NSArray *shortsToRemove = @[@"shorts_shelf.eml", @"shorts_video_cell.eml", @"6Shorts", @"eml.shorts-shelf"];
-    for (NSString *shorts in shortsToRemove) {
-        if (IS_ENABLED(HideShortsShelf) && [description containsString:shorts] && ![description containsString:@"history*"]) {
-            return nil;
-        }
-    }
+    NSString *adString = getAdString(description);
+    if (adString) return nil;
+    // NSArray *shortsToRemove = @[@"shorts_shelf.eml", @"shorts_video_cell.eml", @"6Shorts", @"eml.shorts-shelf"];
+    // for (NSString *shorts in shortsToRemove) {
+    //     if (IS_ENABLED(HideShortsShelf) && [description containsString:shorts] && ![description containsString:@"history*"]) {
+    //         return nil;
+    //     }
+    // }
     return %orig;
 }
 %end
@@ -591,6 +598,11 @@ static BOOL isDarkMode(UIView *view) {
 - (void)setNextButtonHidden:(BOOL)arg { IS_ENABLED(HideNextButton) ? %orig(YES) : %orig; }
 // Hide video title in full screen
 - (BOOL)titleViewHidden { return IS_ENABLED(HideFullvidTitle) ? YES : %orig; }
+%end
+
+%hook YTAutonavEndscreenController
+- (void)showEndscreen { if (!IS_ENABLED(HideSuggestedVideo)) %orig; }
+- (void)showEndscreenControlsInPlayerBar:(BOOL)arg { IS_ENABLED(HideSuggestedVideo) ? %orig(NO) ; %orig; }
 %end
 
 %hook YTSettings
@@ -630,6 +642,21 @@ static BOOL isDarkMode(UIView *view) {
 - (BOOL)allowDoubleTapToSeekGestureRecognizer { return IS_ENABLED(DisablesDoubleTap) ? NO : %orig; }
 // Disable long hold
 - (BOOL)allowLongPressGestureRecognizerInView:(id)arg { return IS_ENABLED(DisablesLongHold) ? NO : %orig; }
+%end
+
+// YTNoPaidPromo (https://github.com/PoomSmart/YTNoPaidPromo)
+%group PaidPromoOverlay
+%hook YTMainAppVideoPlayerOverlayViewController
+- (void)setPaidContentWithPlayerData:(id)data {}
+- (void)playerOverlayProvider:(YTPlayerOverlayProvider *)provider didInsertPlayerOverlay:(YTPlayerOverlay *)overlay {
+    if ([[overlay overlayIdentifier] isEqualToString:@"player_overlay_paid_content"]) return;
+    %orig;
+}
+%end
+
+%hook YTInlineMutedPlaybackPlayerOverlayViewController
+- (void)setPaidContentWithPlayerData:(id)data {}
+%end
 %end
 
 // Remove Watermarks
@@ -688,21 +715,6 @@ static BOOL isDarkMode(UIView *view) {
 %hook YTPlayabilityResolutionUserActionUIControllerImpl
 - (void)showConfirmAlert { IS_ENABLED(HideContentWarning) ? [self confirmAlertDidPressConfirm] : %orig; }
 %end
-
-/*
-// Dont Show Related Videos on Finish
-%hook YTFullscreenEngagementOverlayController
-- (void)setRelatedVideosVisible:(BOOL)arg1 { IS_ENABLED(HideRelateVideo) ? %orig(NO) : %orig; }
-%end
-
-%hook YTFullscreenEngagementOverlayView
-- (void)setRelatedVideosView:(id)arg { if (!IS_ENABLED(HideRelateVideo)) %orig; }
-%end
-
-// Localizations
-"HIDE_RELATE_VIDEO" = "Hide related videos";
-"HIDE_RELATE_VIDEO_DESC" = "Hide the grid of suggested related videos that appears when a video finishes playing.";
-*/
 
 /*
 %hook YTInlinePlayerBarContainerView
@@ -1319,6 +1331,149 @@ BOOL isTabSelected = NO;
 }
 %end
 
+// Gestures - @bhackel (YTLitePlus)
+%group Gestures
+%hook YTWatchLayerViewController
+// invoked when the player view controller is either created or destroyed
+- (void)watchController:(YTWatchController *)watchController didSetPlayerViewController:(YTPlayerViewController *)playerViewController {
+    if (playerViewController) {
+        // check to see if the pan gesture is already created
+        if (!playerViewController.YouModPanGesture) {
+            playerViewController.YouModPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:playerViewController action:@selector(YouModHandlePanGesture:)];
+            playerViewController.YouModPanGesture.delegate = playerViewController;
+            [playerViewController.playerView addGestureRecognizer:playerViewController.YouModPanGesture];
+        }        
+    }
+    %orig;
+}
+%end
+
+%hook YTPlayerViewController
+%property (nonatomic, retain) UIPanGestureRecognizer *YouModPanGesture;
+%new
+- (void)YouModHandlePanGesture:(UIPanGestureRecognizer *)panGestureRecognizer {
+    static UIImpactFeedbackGenerator *feedbackGenerator;
+    static float initialVolume;
+    static float initialBrightness;
+    static BOOL isValidHorizontalPan = NO;
+    static GestureSection gestureSection = GestureSectionInvalid;
+    static CGPoint startLocation;
+    static CGFloat deadzoneStartingXTranslation;
+    static CGFloat adjustedTranslationX;
+    static CGFloat deadzoneRadius = 20.0;
+    static CGFloat sensitivityFactor = 1.0;
+    static MPVolumeView *volumeView;
+    static UISlider *volumeViewSlider;
+
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        volumeView = [[MPVolumeView alloc] init];
+        for (UIView *view in volumeView.subviews) {
+            if ([view isKindOfClass:[UISlider class]]) {
+                volumeViewSlider = (UISlider *)view;
+                break;
+            }
+        }
+        feedbackGenerator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+    });
+
+    // --- Helper Logic ---
+    void (^adjustBrightness)(CGFloat, CGFloat) = ^(CGFloat translationX, CGFloat initialB) {
+        float brightnessSensitivityFactor = 3.0;
+        float newBrightness = initialB + ((translationX / 1000.0) * sensitivityFactor * brightnessSensitivityFactor);
+        newBrightness = fmaxf(fminf(newBrightness, 1.0), 0.0);
+        [[UIScreen mainScreen] setBrightness:newBrightness];
+    };
+
+    void (^adjustVolume)(CGFloat, CGFloat) = ^(CGFloat translationX, CGFloat initialV) {
+        float volumeSensitivityFactor = 3.0;
+        float newVolume = initialV + ((translationX / 1000.0) * sensitivityFactor * volumeSensitivityFactor);
+        newVolume = fmaxf(fminf(newVolume, 1.0), 0.0);
+        
+        CGFloat currentVolume = [[AVAudioSession sharedInstance] outputVolume];
+        if (fabs(newVolume - currentVolume) < 0.01 && currentVolume > 0.01 && currentVolume < 0.99) return;
+        
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.01 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            volumeViewSlider.value = newVolume;
+        });
+    };
+
+    // --- Gesture State Handling ---
+    if (panGestureRecognizer.state == UIGestureRecognizerStateBegan) {
+        startLocation = [panGestureRecognizer locationInView:self.view];
+        CGFloat viewWidth = self.view.bounds.size.width;
+
+        // FIXED: Left = Brightness (Top enum), Right = Volume (Bottom enum)
+        if (startLocation.x <= viewWidth / 2.0) {
+            gestureSection = GestureSectionTop; 
+        } else {
+            gestureSection = GestureSectionBottom;
+        }
+        
+        isValidHorizontalPan = NO;
+    }
+
+    if (panGestureRecognizer.state == UIGestureRecognizerStateChanged) {
+        CGPoint translation = [panGestureRecognizer translationInView:self.view];
+        
+        if (!isValidHorizontalPan) {
+            // Predominantly horizontal check
+            if (fabs(translation.x) > fabs(translation.y)) {
+                CGFloat distanceFromStart = hypot(translation.x, translation.y);
+                if (distanceFromStart < deadzoneRadius) return;
+
+                isValidHorizontalPan = YES;
+                deadzoneStartingXTranslation = translation.x;
+                
+                // Initialize based on side
+                if (gestureSection == GestureSectionTop) {
+                    initialBrightness = [UIScreen mainScreen].brightness;
+                } else {
+                    initialVolume = [[AVAudioSession sharedInstance] outputVolume];
+                }
+
+                if (IS_ENABLED(@"playerGesturesHapticFeedback_enabled")) {
+                    [feedbackGenerator prepare];
+                    [feedbackGenerator impactOccurred];
+                }
+            } else {
+                panGestureRecognizer.state = UIGestureRecognizerStateCancelled;
+                return;
+            }
+        }
+
+        if (isValidHorizontalPan) {
+            adjustedTranslationX = translation.x - deadzoneStartingXTranslation;
+            
+            if (gestureSection == GestureSectionTop) {
+                adjustBrightness(adjustedTranslationX, initialBrightness);
+            } else if (gestureSection == GestureSectionBottom) {
+                adjustVolume(adjustedTranslationX, initialVolume);
+            }
+        }
+    }
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    if ([gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]] && [otherGestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
+        YTMainAppVideoPlayerOverlayViewController *mainVideoPlayerController = (YTMainAppVideoPlayerOverlayViewController *)self.childViewControllers.firstObject;
+        YTPlayerBarController *playerBarController = mainVideoPlayerController.playerBarController;
+        YTInlinePlayerBarContainerView *playerBar = playerBarController.playerBar;
+        
+        // Priority to seeking and scrubbing
+        if (otherGestureRecognizer == playerBar.scrubGestureRecognizer) return NO;
+        
+        YTFineScrubberFilmstripView *fineScrubberFilmstrip = playerBar.fineScrubberFilmstrip;
+        if (!fineScrubberFilmstrip) return YES;
+        
+        YTFineScrubberFilmstripCollectionView *filmstripCollectionView = [fineScrubberFilmstrip valueForKey:@"_filmstripCollectionView"];
+        if (filmstripCollectionView && otherGestureRecognizer == filmstripCollectionView.panGestureRecognizer) return NO;
+    }
+    return YES;
+}
+%end
+%end
+
 %ctor {
     YTILikeResponseClass = %c(YTILikeResponse);
     YTIDislikeResponseClass = %c(YTIDislikeResponse);
@@ -1338,5 +1493,11 @@ BOOL isTabSelected = NO;
     }
     if (IS_ENABLED(BackgroundPlayback)) {
         %init(BackgroundPlayback);
+    }
+    if (IS_ENABLED(HidePaidPromoOverlay)) {
+        %init(PaidPromoOverlay);
+    }
+    if (IS_ENABLED(GestureControls)) {
+        %init(Gestures);
     }
 }
